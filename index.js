@@ -99,16 +99,28 @@ async function run(){
 
      // search result
 
-     app.get("/api/billings/search", async (req,res) => {
-          try {
-            const searchParams = req.query;
-            console.log(searchParams);
-            const result = await billingcollection.find(searchParams);
-            if (!result) throw Error("Error, No result Found...!");
-            res.status(200).json(result);
-          } catch (err) {
-            res.status(400).json({ msg: err });
-          }
+     app.get("/search", (req,res) => {
+      const {q} = req.query;
+      console.log(q);
+
+      // const keys = ["fullname","email","phone"];
+
+      // const search = (data) => {
+      //   return data.filter((item) => {
+      //     keys.some((key) => item[key].toLowerCase().includes(q))
+
+      //   })
+
+
+
+      // }
+
+      const users = billingcollection.find({$regex:q})
+      res.send(users);
+
+
+
+        
      })
 
 
