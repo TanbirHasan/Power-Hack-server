@@ -7,6 +7,9 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 7000;
 
+
+
+
 app.use(express.json());
 app.use(cors());
 
@@ -17,6 +20,10 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+
+
+
+
 
 
 app.get("/", (req, res) => {
