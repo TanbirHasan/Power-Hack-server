@@ -1,6 +1,10 @@
 const express = require("express");
 
 const cors = require("cors");
+const mongoose = require("mongoose");
+const User = require("./models/user.model");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 require("dotenv").config();
 const app = express();
@@ -13,6 +17,8 @@ const port = process.env.PORT || 7000;
 app.use(express.json());
 app.use(cors());
 
+
+
 const uri =
   `mongodb+srv://${process.env.DB_user}:${process.env.DB_PASS}@cluster0.yecar.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
@@ -23,7 +29,10 @@ const client = new MongoClient(uri, {
 
 
 
-
+mongoose
+  .connect(`mongodb+srv://${process.env.DB_user}:${process.env.DB_PASS}@cluster0.yecar.mongodb.net/?retryWrites=true&w=majority`)
+  .then(() => console.log("db connection successfull"))
+  .catch((err) => console.log(err));
 
 
 app.get("/", (req, res) => {
@@ -89,22 +98,22 @@ async function run(){
 
 
 
-    //  app.put("/api/update-billing/:id", async (req, res) => {
-    //     const id = req.params.id;
-    //    const userInfo = req.body;
+     app.put("/api/update-billing/:id", async (req, res) => {
+        const id = req.params.id;
+       const userInfo = req.body;
      
      
       
-    //    const result = await billingcollection.updateOne(
-    //      { _id:  ObjectId(id) },
-    //      { $set: { fullname:req.body.fullname,email:req.body.email,phone:req.body.phone,paidamount:req.body.paidamount } },
-    //      { upsert: true }
-    //    );
+       const result = await billingcollection.updateOne(
+         { _id: id },
+         { $set: { fullname:req.body.fullname,email:req.body.email,phone:req.body.phone,paidamount:req.body.paidamount } },
+         { upsert: true }
+       );
 
-    //    res.send(result);
-    //  });
+       res.send(result);
+     });
 
-     // search result
+   //  search result
 
      app.get("/search", (req,res) => {
       const {q} = req.query;
@@ -129,6 +138,84 @@ async function run(){
 
         
      })
+
+
+     app.post("/api/register", async (req, res) => {
+       console.log(req.body);
+       try {
+         const newPassword = await bcrypt.hash(req.body.password, 10);
+         await User.create({
+           name: req.body.name,
+           email: req.body.email,
+           password: newPassword,
+         });
+         res.json({ status: "ok" });
+       } catch (err) {
+         res.json({ status: "error", error: "Duplicate email" });
+       }
+     });
+
+     app.post("/api/login", async (req, res) => {
+       const user = await User.findOne({
+         email: req.body.email,
+       });
+
+       if (!user) {
+         return { status: "error", error: "Invalid login" };
+       }
+
+       const isPasswordValid = await bcrypt.compare(
+         req.body.password,
+         user.password
+       );
+
+       if (isPasswordValid) {
+         const token = jwt.sign(
+           {
+             name: user.name,
+             email: user.email,
+           },
+           "secret123"
+         );
+
+         return res.json({ status: "ok", user: token });
+       } else {
+         return res.json({ status: "error", user: false });
+       }
+     });
+
+     app.get("/api/quote", async (req, res) => {
+       const token = req.headers["x-access-token"];
+
+       try {
+         const decoded = jwt.verify(token, "secret123");
+         const email = decoded.email;
+         const user = await User.findOne({ email: email });
+
+         return res.json({ status: "ok", quote: user.quote });
+       } catch (error) {
+         console.log(error);
+         res.json({ status: "error", error: "invalid token" });
+       }
+     });
+
+     app.post("/api/quote", async (req, res) => {
+       const token = req.headers["x-access-token"];
+
+       try {
+         const decoded = jwt.verify(token, "secret123");
+         const email = decoded.email;
+         await User.updateOne(
+           { email: email },
+           { $set: { quote: req.body.quote } }
+         );
+
+         return res.json({ status: "ok" });
+       } catch (error) {
+         console.log(error);
+         res.json({ status: "error", error: "invalid token" });
+       }
+     });
 
 
     }
